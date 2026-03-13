@@ -33,7 +33,7 @@ LEVELS = [
         "#         E    W   G #",
         "#   #######    W     #",
         "#   #     #    W     #",
-        "# P #  I  #######    #",
+        "# P #     #######    #",
         "#   #              ###",
         "#   ######     E     #",
         "#   W  C #           #",
@@ -47,7 +47,7 @@ LEVELS = [
         "# #### W ####### ### #",
         "#    # W    C        #",
         "## # # ####### ###   #",
-        "#  # #     I   #     #",
+        "#  # #         #     #",
         "#  # #####     #  E  #",
         "#  #     #  C  #     #",
         "#  ##### # ####### G #",
@@ -77,7 +77,7 @@ LEVELS = [
         "# E # W ###### ### # #",
         "#   # W      #  C  # #",
         "# ### W #### # ####  #",
-        "#     I      #       #",
+        "#            #       #",
         "######################",
     ],
     [
@@ -88,7 +88,7 @@ LEVELS = [
         "## ## ## #### # ###  #",
         "#      E    # #   #  #",
         "# ####### # # ### #  #",
-        "#   I     # #   # #  #",
+        "#         # #   # #  #",
         "# ##### ### ### # #  #",
         "#     C    E     G   #",
         "######################",
@@ -100,7 +100,7 @@ LEVELS = [
         "#   C     ##  W      #",
         "### ##### ####### ## #",
         "#   #   #      S     #",
-        "# E # I ###### ### # #",
+        "# E #   ###### ### # #",
         "#   #      C  #   #  #",
         "# ### ####### # ###  #",
         "#                  E #",
@@ -113,7 +113,7 @@ LEVELS = [
         "# C  W       #  S    #",
         "# ####### ## # ##### #",
         "#       # ## #     # #",
-        "#  E I  #    ##### # #",
+        "#  E    #    ##### # #",
         "# ##### ######   # # #",
         "#     #      C   #   #",
         "################## ###",
@@ -129,7 +129,7 @@ LEVELS = [
         "# E # W  ###### # #  #",
         "#   # W    C    # #  #",
         "# ### W ####### # ## #",
-        "#     I             ##",
+        "#                   ##",
         "######################",
     ],
     [
@@ -142,7 +142,7 @@ LEVELS = [
         "#    # #  ####  #  # #",
         "# E  # #    C   #    #",
         "# #### ####### ####  #",
-        "#      I             #",
+        "#                    #",
         "######################",
     ],
     [
@@ -153,7 +153,7 @@ LEVELS = [
         "## ## ## #### # #### #",
         "#      E    # #    # #",
         "# ####### # # ###  # #",
-        "#   I     # #   #  # #",
+        "#         # #   #  # #",
         "# ##### ### ### #  # #",
         "#     C          #   #",
         "######################",
@@ -165,7 +165,7 @@ LEVELS = [
         "#   C     ## W   S   #",
         "### ##### ####### ## #",
         "#   #   #      E     #",
-        "#   # I ###### ### # #",
+        "#   #   ###### ### # #",
         "#   #      C  #   #  #",
         "# ### ####### # ###  #",
         "#                  S #",
@@ -179,7 +179,7 @@ LEVELS = [
         "# # ###### #  ###### #",
         "# #      # #       # #",
         "# #### E # ######  # #",
-        "#    # I #      #  # #",
+        "#    #   #      #  # #",
         "#### # ### #### #  # #",
         "#      C      S #    #",
         "######################",
@@ -194,7 +194,7 @@ LEVELS = [
         "# E # W  ###### # #  #",
         "#   # W       S # #  #",
         "# ### W ####### # ## #",
-        "#     I      E      ##",
+        "#            E      ##",
         "######################",
     ],
     [
@@ -206,7 +206,7 @@ LEVELS = [
         "# #    #       #   # #",
         "# # E  ######  ### # #",
         "# #    C    #    # # #",
-        "# ####### I #### # # #",
+        "# #######   #### # # #",
         "#          S       E #",
         "######################",
     ],
@@ -219,7 +219,7 @@ LEVELS = [
         "#    #      # ##   # #",
         "# S  ###### # #### # #",
         "#    #  C   #    # # #",
-        "#### # ### I ### # # #",
+        "#### # ###   ### # # #",
         "#         E     S    #",
         "######################",
     ],
@@ -325,7 +325,7 @@ screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Freeze Frame")
 clock = pygame.time.Clock()
 
-font = pygame.font.SysFont(None, 28)
+font = pygame.font.Font(None, 28)
 big_font = pygame.font.SysFont(None, 56)
 
 # -----------------------------
@@ -674,27 +674,6 @@ class Water:
             return
 
         surface.blit(self.image, draw_rect)
-
-        connector = pygame.Surface((WATER_TILE_SIZE, WATER_TILE_SIZE), pygame.SRCALPHA)
-
-        center_size = max(14, WATER_TILE_SIZE // 3)
-        cx = (WATER_TILE_SIZE - center_size) // 2
-        cy = (WATER_TILE_SIZE - center_size) // 2
-        color = (80, 150, 235, 120)
-
-        if any([self.connect_up, self.connect_down, self.connect_left, self.connect_right]):
-            pygame.draw.rect(connector, color, (cx, cy, center_size, center_size))
-
-        if self.connect_up:
-            pygame.draw.rect(connector, color, (cx, 0, center_size, cy + center_size))
-        if self.connect_down:
-            pygame.draw.rect(connector, color, (cx, cy, center_size, WATER_TILE_SIZE - cy))
-        if self.connect_left:
-            pygame.draw.rect(connector, color, (0, cy, cx + center_size, center_size))
-        if self.connect_right:
-            pygame.draw.rect(connector, color, (cx, cy, WATER_TILE_SIZE - cx, center_size))
-
-        surface.blit(connector, draw_rect)
 
 
 class IceBlock:
