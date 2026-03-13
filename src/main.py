@@ -234,6 +234,7 @@ MAP_PIXEL_HEIGHT = MAP_ROWS * TILE_SIZE + WORLD_PADDING * 2
 
 PLAYER_SCALE = 0.8
 PLAYER_SPEED = 180
+PLAYER_COLLISION_SKIN = 2
 
 ANIM_FPS_MOVING = 8
 ANIM_FPS_IDLE = 3
@@ -1114,19 +1115,47 @@ class Player:
         return move_x, move_y
 
     def collides_blocking(self, test_hitbox, walls, ice_blocks, waters):
+        probe_hitbox = test_hitbox.inflate(-PLAYER_COLLISION_SKIN * 2, -PLAYER_COLLISION_SKIN * 2)
+
         for wall in walls:
-            if test_hitbox.colliderect(wall.rect):
+            if probe_hitbox.colliderect(wall.rect):
                 return True
 
         for ice in ice_blocks:
-            if test_hitbox.colliderect(ice.rect):
+            if probe_hitbox.colliderect(ice.rect):
                 return True
 
         for water in waters:
-            if test_hitbox.colliderect(water.rect) and not water.frozen:
+            if probe_hitbox.colliderect(water.rect) and not water.frozen:
                 return True
 
         return False
+
+    def move_with_collisions(self, dx, dy, walls, ice_blocks, waters):
+        steps = max(1, int(math.ceil(max(abs(dx), abs(dy)))))
+        step_x = dx / steps
+        step_y = dy / steps
+
+        for _ in range(steps):
+            if step_x != 0:
+                next_x = self.x + step_x
+                test_hitbox = self.hitbox.copy()
+                test_hitbox.centerx = int(next_x)
+                test_hitbox.centery = int(self.y + 12)
+
+                if not self.collides_blocking(test_hitbox, walls, ice_blocks, waters):
+                    self.x = next_x
+                    self.hitbox = test_hitbox
+
+            if step_y != 0:
+                next_y = self.y + step_y
+                test_hitbox = self.hitbox.copy()
+                test_hitbox.centerx = int(self.x)
+                test_hitbox.centery = int(next_y + 12)
+
+                if not self.collides_blocking(test_hitbox, walls, ice_blocks, waters):
+                    self.y = next_y
+                    self.hitbox = test_hitbox
 
     def update(self, dt, walls, ice_blocks, waters):
         move_x, move_y = self.handle_input()
@@ -1145,17 +1174,7 @@ class Player:
             else:
                 self.direction = "down" if move_y > 0 else "up"
 
-        test_hitbox = self.hitbox.copy()
-        test_hitbox.x += int(dx)
-        if not self.collides_blocking(test_hitbox, walls, ice_blocks, waters):
-            self.x += dx
-            self.hitbox = test_hitbox
-
-        test_hitbox = self.hitbox.copy()
-        test_hitbox.y += int(dy)
-        if not self.collides_blocking(test_hitbox, walls, ice_blocks, waters):
-            self.y += dy
-            self.hitbox = test_hitbox
+        self.move_with_collisions(dx, dy, walls, ice_blocks, waters)
 
         left_limit = WORLD_PADDING + BORDER_SIZE
         right_limit = MAP_PIXEL_WIDTH - WORLD_PADDING - BORDER_SIZE
@@ -1354,7 +1373,7 @@ def load_level(level_index):
 async def main():
     start_background_music()
 
-    current_level_index = 0
+    current_level_index = 5
     walls, waters, ice_blocks, enemies, coins, goal, level_key, player, camera, projectiles = load_level(current_level_index)
 
     game_won = False
@@ -1485,16 +1504,16 @@ async def main():
         screen.blit(coin_text, (16, 12))
 
         if game_won:
-            win_surf = big_font.render("LEVEL CLEAR", True, (230, 245, 255))
-            hint_surf = font.render("Press ENTER or N for next level", True, (230, 245, 255))
-            restart_surf = font.render("Press R to restart this level", True, (230, 245, 255))
+            win_surf = big_font.render("LEVEL CLEAR", True, (0, 0, 0))
+            hint_surf = font.render("Press ENTER or N for next level", True, (0, 0, 0))
+            restart_surf = font.render("Press R to restart this level", True, (0, 0, 0))
             screen.blit(win_surf, (SCREEN_WIDTH // 2 - win_surf.get_width() // 2, 90))
             screen.blit(hint_surf, (SCREEN_WIDTH // 2 - hint_surf.get_width() // 2, 150))
             screen.blit(restart_surf, (SCREEN_WIDTH // 2 - restart_surf.get_width() // 2, 182))
 
         if game_finished:
             win_surf = big_font.render(f"YOU BEAT ALL {len(LEVELS)} LEVELS", True, (0, 0, 0))
-            hint_surf = font.render("Press R to replay the current level", True, (0, 5, 0))
+            hint_surf = font.render("Press R to replay the current level", True, (0, 0, 0))
             screen.blit(win_surf, (SCREEN_WIDTH // 2 - win_surf.get_width() // 2, 90))
             screen.blit(hint_surf, (SCREEN_WIDTH // 2 - hint_surf.get_width() // 2, 150))
 
