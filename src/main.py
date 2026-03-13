@@ -301,6 +301,11 @@ ENEMY_DRAW_OFFSET_Y = -18
 ENEMY_DRAW_SIZE = (86, 86)
 ENEMY_COLLISION_SIZE = (38, 38)
 
+# player anti-stuck tuning
+PLAYER_HITBOX_W = 18
+PLAYER_HITBOX_H = 12
+PLAYER_CORNER_NUDGE = 8
+
 # -----------------------------
 # MUSIC / SFX
 # -----------------------------
@@ -403,6 +408,13 @@ def rect_center_distance(rect_a, rect_b):
     ax, ay = rect_a.center
     bx, by = rect_b.center
     return math.hypot(ax - bx, ay - by)
+
+
+def has_clear_line_of_sight(start_pos, end_pos, walls):
+    for wall in walls:
+        if wall.rect.clipline(start_pos, end_pos):
+            return False
+    return True
 
 
 def set_current_level(level_rows):
@@ -977,114 +989,6 @@ class DoubleShotEnemy(Enemy):
         self.shots_left = SPECIAL_ENEMY_MAX_BULLETS
         self.shoot_timer = SPECIAL_ENEMY_SHOOT_INTERVAL
         self.image = SPECIAL_ENEMY_IDLE_FRAMES[self.anim_index]
-        self.melee_speed = ENEMY_MELEE_SPEED * 0.95
-
-    def animate(self, dt):
-        self.anim_timer += dt
-        frame_duration = 1.0 / ENEMY_ANIM_FPS_IDLE
-
-        while self.anim_timer >= frame_duration:
-            self.anim_timer -= frame_duration
-            self.anim_index = (self.anim_index + 1) % len(SPECIAL_ENEMY_IDLE_FRAMES)
-
-        self.image = SPECIAL_ENEMY_IDLE_FRAMES[self.anim_index]
-
-    def shoot_at_player(self, projectiles, player):
-        dx = player.hitbox.centerx - self.rect.centerx
-        dy = player.hitbox.centery - self.rect.centery
-        dist = math.hypot(dx, dy)
-        if dist == 0:
-            dx, dy, dist = 1, 0, 1
-
-        nx = dx / dist
-        ny = dy / dist
-
-        perp_x = -ny
-        perp_y = nx
-
-        dir1_x = nx + perp_x * SPECIAL_ENEMY_SPREAD
-        dir1_y = ny + perp_y * SPECIAL_ENEMY_SPREAD
-        dir2_x = nx - perp_x * SPECIAL_ENEMY_SPREAD
-        dir2_y = ny - perp_y * SPECIAL_ENEMY_SPREAD
-
-        len1 = math.hypot(dir1_x, dir1_y)
-        len2 = math.hypot(dir2_x, dir2_y)
-
-        dir1_x /= len1
-        dir1_y /= len1
-        dir2_x /= len2
-        dir2_y /= len2
-
-        spawn1_x = self.rect.centerx + perp_x * SPECIAL_ENEMY_BULLET_OFFSET
-        spawn1_y = self.rect.centery + perp_y * SPECIAL_ENEMY_BULLET_OFFSET
-        spawn2_x = self.rect.centerx - perp_x * SPECIAL_ENEMY_BULLET_OFFSET
-        spawn2_y = self.rect.centery - perp_y * SPECIAL_ENEMY_BULLET_OFFSET
-
-        projectiles.append(
-            Projectile(
-                spawn1_x,
-                spawn1_y,
-                dir1_x * PROJECTILE_SPEED,
-                dir1_y * PROJECTILE_SPEED,
-                image=special_projectile_img,
-            )
-        )
-        projectiles.append(
-            Projectile(
-                spawn2_x,
-                spawn2_y,
-                dir2_x * PROJECTILE_SPEED,
-                dir2_y * PROJECTILE_SPEED,
-                image=special_projectile_img,
-            )
-        )
-
-    def update(self, dt, player, projectiles, walls, ice_blocks, waters):
-        if not self.alive:
-            return
-
-        if self.frozen:
-            self.freeze_timer -= dt
-            if self.freeze_timer <= 0:
-                self.frozen = False
-                self.freeze_timer = 0.0
-            return
-
-        # always keep purple idle anim going
-        self.animate(dt)
-
-        if self.shots_left > 0:
-            self.shoot_timer -= dt
-            if self.shoot_timer <= 0:
-                self.shoot_at_player(projectiles, player)
-                self.shots_left -= 1
-                self.shoot_timer = SPECIAL_ENEMY_SHOOT_INTERVAL
-        else:
-            # smooth chase every frame instead of timer chunks
-            self.move_toward_player(dt, player, walls, ice_blocks, waters)
-            self.slime_bob_timer += dt
-
-    def draw(self, surface, camera):
-        if not self.alive:
-            return
-
-        if self.frozen:
-            img = enemy_frozen_img
-            bob_y = 0
-        else:
-            img = self.image
-            bob_y = math.sin(self.slime_bob_timer * 10.0) * 4.0 if self.shots_left <= 0 else 0
-
-        draw_rect = img.get_rect(center=self.rect.center)
-        draw_rect.y += ENEMY_DRAW_OFFSET_Y - int(bob_y)
-        surface.blit(img, camera.apply_rect(draw_rect))
-
-class DoubleShotEnemy(Enemy):
-    def __init__(self, tx, ty):
-        super().__init__(tx, ty)
-        self.shots_left = SPECIAL_ENEMY_MAX_BULLETS
-        self.shoot_timer = SPECIAL_ENEMY_SHOOT_INTERVAL
-        self.image = SPECIAL_ENEMY_IDLE_FRAMES[self.anim_index]
 
         # keeps enemy 2 moving more often, but still visibly idling/animating
         self.move_cycle_timer = 0.0
@@ -1191,6 +1095,7 @@ class DoubleShotEnemy(Enemy):
         draw_rect.y += ENEMY_DRAW_OFFSET_Y
         surface.blit(img, camera.apply_rect(draw_rect))
 
+
 class Player:
     def __init__(self, x, y):
         self.spawn_x = float(x)
@@ -1208,7 +1113,7 @@ class Player:
         self.shadow = shadow_image
 
         self.rect = self.image.get_rect(center=(int(self.x), int(self.y)))
-        self.hitbox = pygame.Rect(0, 0, 18, 12)
+        self.hitbox = pygame.Rect(0, 0, PLAYER_HITBOX_W, PLAYER_HITBOX_H)
         self.update_rects()
 
         self.freeze_flash_timer = 0.0
@@ -1261,6 +1166,86 @@ class Player:
 
         return False
 
+    def try_corner_slide_x(self, pixel_step, walls, ice_blocks, waters):
+        for nudge in range(1, PLAYER_CORNER_NUDGE + 1):
+            for offset_y in (-nudge, nudge):
+                test_hitbox = self.hitbox.copy()
+                test_hitbox.y += offset_y
+                test_hitbox.x += pixel_step
+                if not self.collides_blocking(test_hitbox, walls, ice_blocks, waters):
+                    self.y += offset_y
+                    self.hitbox.y += offset_y
+                    self.x += pixel_step
+                    self.hitbox.x += pixel_step
+                    return True
+        return False
+
+    def try_corner_slide_y(self, pixel_step, walls, ice_blocks, waters):
+        for nudge in range(1, PLAYER_CORNER_NUDGE + 1):
+            for offset_x in (-nudge, nudge):
+                test_hitbox = self.hitbox.copy()
+                test_hitbox.x += offset_x
+                test_hitbox.y += pixel_step
+                if not self.collides_blocking(test_hitbox, walls, ice_blocks, waters):
+                    self.x += offset_x
+                    self.hitbox.x += offset_x
+                    self.y += pixel_step
+                    self.hitbox.y += pixel_step
+                    return True
+        return False
+
+    def move_axis(self, amount, axis, walls, ice_blocks, waters):
+        if amount == 0:
+            return
+
+        sign = 1 if amount > 0 else -1
+        pixels = int(abs(amount))
+        remainder = abs(amount) - pixels
+
+        for _ in range(pixels):
+            test_hitbox = self.hitbox.copy()
+            if axis == "x":
+                test_hitbox.x += sign
+            else:
+                test_hitbox.y += sign
+
+            if not self.collides_blocking(test_hitbox, walls, ice_blocks, waters):
+                if axis == "x":
+                    self.x += sign
+                    self.hitbox.x += sign
+                else:
+                    self.y += sign
+                    self.hitbox.y += sign
+            else:
+                if axis == "x":
+                    self.try_corner_slide_x(sign, walls, ice_blocks, waters)
+                else:
+                    self.try_corner_slide_y(sign, walls, ice_blocks, waters)
+                return
+
+        if remainder > 0:
+            tiny_step = sign * remainder
+            rounded = int(round(tiny_step))
+            if rounded != 0:
+                test_hitbox = self.hitbox.copy()
+                if axis == "x":
+                    test_hitbox.x += rounded
+                else:
+                    test_hitbox.y += rounded
+
+                if not self.collides_blocking(test_hitbox, walls, ice_blocks, waters):
+                    if axis == "x":
+                        self.x += tiny_step
+                        self.hitbox.x += rounded
+                    else:
+                        self.y += tiny_step
+                        self.hitbox.y += rounded
+                else:
+                    if axis == "x":
+                        self.try_corner_slide_x(sign, walls, ice_blocks, waters)
+                    else:
+                        self.try_corner_slide_y(sign, walls, ice_blocks, waters)
+
     def update(self, dt, walls, ice_blocks, waters):
         move_x, move_y = self.handle_input()
         moving = (move_x != 0 or move_y != 0)
@@ -1278,17 +1263,9 @@ class Player:
             else:
                 self.direction = "down" if move_y > 0 else "up"
 
-        test_hitbox = self.hitbox.copy()
-        test_hitbox.x += int(dx)
-        if not self.collides_blocking(test_hitbox, walls, ice_blocks, waters):
-            self.x += dx
-            self.hitbox = test_hitbox
-
-        test_hitbox = self.hitbox.copy()
-        test_hitbox.y += int(dy)
-        if not self.collides_blocking(test_hitbox, walls, ice_blocks, waters):
-            self.y += dy
-            self.hitbox = test_hitbox
+        # smooth movement with anti-corner-stuck fix
+        self.move_axis(dx, "x", walls, ice_blocks, waters)
+        self.move_axis(dy, "y", walls, ice_blocks, waters)
 
         left_limit = WORLD_PADDING + BORDER_SIZE
         right_limit = MAP_PIXEL_WIDTH - WORLD_PADDING - BORDER_SIZE
@@ -1339,7 +1316,7 @@ class Player:
 
             self.image = anim_list[self.anim_index]
 
-    def freeze_pulse(self, waters, enemies, projectiles):
+    def freeze_pulse(self, waters, enemies, projectiles, walls):
         self.freeze_flash_timer = 0.18
         anything_newly_frozen = False
 
@@ -1348,10 +1325,17 @@ class Player:
                 if water.freeze():
                     anything_newly_frozen = True
 
+        player_center = self.hitbox.center
+
         for enemy in enemies:
-            if enemy.alive and rect_center_distance(self.hitbox, enemy.rect) <= FREEZE_RADIUS:
-                if enemy.freeze(duration=ENEMY_FREEZE_HIT_DURATION, count_hit=True):
-                    anything_newly_frozen = True
+            if not enemy.alive:
+                continue
+            if rect_center_distance(self.hitbox, enemy.rect) > FREEZE_RADIUS:
+                continue
+            if not has_clear_line_of_sight(player_center, enemy.rect.center, walls):
+                continue
+            if enemy.freeze(duration=ENEMY_FREEZE_HIT_DURATION, count_hit=True):
+                anything_newly_frozen = True
 
         for projectile in projectiles:
             if not projectile.alive or projectile.frozen:
@@ -1505,7 +1489,7 @@ async def main():
 
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE and not game_won and not game_finished:
-                    player.freeze_pulse(waters, enemies, projectiles)
+                    player.freeze_pulse(waters, enemies, projectiles, walls)
 
                 elif event.key == pygame.K_r:
                     walls, waters, ice_blocks, enemies, coins, goal, level_key, player, camera, projectiles = load_level(current_level_index)
