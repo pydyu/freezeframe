@@ -301,11 +301,6 @@ ENEMY_DRAW_OFFSET_Y = -18
 ENEMY_DRAW_SIZE = (86, 86)
 ENEMY_COLLISION_SIZE = (38, 38)
 
-# player anti-stuck tuning
-PLAYER_HITBOX_W = 18
-PLAYER_HITBOX_H = 12
-PLAYER_CORNER_NUDGE = 8
-
 # -----------------------------
 # MUSIC / SFX
 # -----------------------------
@@ -408,13 +403,6 @@ def rect_center_distance(rect_a, rect_b):
     ax, ay = rect_a.center
     bx, by = rect_b.center
     return math.hypot(ax - bx, ay - by)
-
-
-def has_clear_line_of_sight(start_pos, end_pos, walls):
-    for wall in walls:
-        if wall.rect.clipline(start_pos, end_pos):
-            return False
-    return True
 
 
 def set_current_level(level_rows):
@@ -918,13 +906,15 @@ class Enemy:
         move_y = dy * self.melee_speed * dt
 
         test_rect = self.rect.copy()
-        test_rect.x += int(move_x)
+        test_rect.centerx = int(self.x + move_x)
+        test_rect.centery = int(self.y)
         if not self.collides_blocking(test_rect, walls, ice_blocks, waters):
             self.x += move_x
             self.update_rect()
 
         test_rect = self.rect.copy()
-        test_rect.y += int(move_y)
+        test_rect.centerx = int(self.x)
+        test_rect.centery = int(self.y + move_y)
         if not self.collides_blocking(test_rect, walls, ice_blocks, waters):
             self.y += move_y
             self.update_rect()
@@ -1113,7 +1103,7 @@ class Player:
         self.shadow = shadow_image
 
         self.rect = self.image.get_rect(center=(int(self.x), int(self.y)))
-        self.hitbox = pygame.Rect(0, 0, PLAYER_HITBOX_W, PLAYER_HITBOX_H)
+        self.hitbox = pygame.Rect(0, 0, 18, 12)
         self.update_rects()
 
         self.freeze_flash_timer = 0.0
@@ -1166,85 +1156,19 @@ class Player:
 
         return False
 
-    def try_corner_slide_x(self, pixel_step, walls, ice_blocks, waters):
-        for nudge in range(1, PLAYER_CORNER_NUDGE + 1):
-            for offset_y in (-nudge, nudge):
-                test_hitbox = self.hitbox.copy()
-                test_hitbox.y += offset_y
-                test_hitbox.x += pixel_step
-                if not self.collides_blocking(test_hitbox, walls, ice_blocks, waters):
-                    self.y += offset_y
-                    self.hitbox.y += offset_y
-                    self.x += pixel_step
-                    self.hitbox.x += pixel_step
-                    return True
-        return False
+    def clamp_position_to_world(self):
+        # Use actual hitbox/world bounds instead of BORDER_SIZE so the player
+        # does not get stuck on corners/sides when moving left.
+        half_w = self.hitbox.width / 2
+        half_h = self.hitbox.height / 2
 
-    def try_corner_slide_y(self, pixel_step, walls, ice_blocks, waters):
-        for nudge in range(1, PLAYER_CORNER_NUDGE + 1):
-            for offset_x in (-nudge, nudge):
-                test_hitbox = self.hitbox.copy()
-                test_hitbox.x += offset_x
-                test_hitbox.y += pixel_step
-                if not self.collides_blocking(test_hitbox, walls, ice_blocks, waters):
-                    self.x += offset_x
-                    self.hitbox.x += offset_x
-                    self.y += pixel_step
-                    self.hitbox.y += pixel_step
-                    return True
-        return False
+        min_x = WORLD_PADDING + half_w
+        max_x = MAP_PIXEL_WIDTH - WORLD_PADDING - half_w
+        min_y = WORLD_PADDING - 12 + half_h
+        max_y = MAP_PIXEL_HEIGHT - WORLD_PADDING - 12 - half_h
 
-    def move_axis(self, amount, axis, walls, ice_blocks, waters):
-        if amount == 0:
-            return
-
-        sign = 1 if amount > 0 else -1
-        pixels = int(abs(amount))
-        remainder = abs(amount) - pixels
-
-        for _ in range(pixels):
-            test_hitbox = self.hitbox.copy()
-            if axis == "x":
-                test_hitbox.x += sign
-            else:
-                test_hitbox.y += sign
-
-            if not self.collides_blocking(test_hitbox, walls, ice_blocks, waters):
-                if axis == "x":
-                    self.x += sign
-                    self.hitbox.x += sign
-                else:
-                    self.y += sign
-                    self.hitbox.y += sign
-            else:
-                if axis == "x":
-                    self.try_corner_slide_x(sign, walls, ice_blocks, waters)
-                else:
-                    self.try_corner_slide_y(sign, walls, ice_blocks, waters)
-                return
-
-        if remainder > 0:
-            tiny_step = sign * remainder
-            rounded = int(round(tiny_step))
-            if rounded != 0:
-                test_hitbox = self.hitbox.copy()
-                if axis == "x":
-                    test_hitbox.x += rounded
-                else:
-                    test_hitbox.y += rounded
-
-                if not self.collides_blocking(test_hitbox, walls, ice_blocks, waters):
-                    if axis == "x":
-                        self.x += tiny_step
-                        self.hitbox.x += rounded
-                    else:
-                        self.y += tiny_step
-                        self.hitbox.y += rounded
-                else:
-                    if axis == "x":
-                        self.try_corner_slide_x(sign, walls, ice_blocks, waters)
-                    else:
-                        self.try_corner_slide_y(sign, walls, ice_blocks, waters)
+        self.x = max(min_x, min(max_x, self.x))
+        self.y = max(min_y, min(max_y, self.y))
 
     def update(self, dt, walls, ice_blocks, waters):
         move_x, move_y = self.handle_input()
@@ -1263,20 +1187,33 @@ class Player:
             else:
                 self.direction = "down" if move_y > 0 else "up"
 
-        # smooth movement with anti-corner-stuck fix
-        self.move_axis(dx, "x", walls, ice_blocks, waters)
-        self.move_axis(dy, "y", walls, ice_blocks, waters)
+        # -------- X AXIS --------
+        next_x = self.x + dx
+        test_hitbox = self.hitbox.copy()
+        test_hitbox.centerx = int(next_x)
+        test_hitbox.centery = int(self.y + 12)
 
-        left_limit = WORLD_PADDING + BORDER_SIZE
-        right_limit = MAP_PIXEL_WIDTH - WORLD_PADDING - BORDER_SIZE
-        top_limit = WORLD_PADDING + BORDER_SIZE
-        bottom_limit = MAP_PIXEL_HEIGHT - WORLD_PADDING - BORDER_SIZE
+        if not self.collides_blocking(test_hitbox, walls, ice_blocks, waters):
+            self.x = next_x
 
-        self.x = max(left_limit, min(right_limit, self.x))
-        self.y = max(top_limit, min(bottom_limit, self.y))
+        self.update_rects()
+        self.clamp_position_to_world()
+        self.update_rects()
+
+        # -------- Y AXIS --------
+        next_y = self.y + dy
+        test_hitbox = self.hitbox.copy()
+        test_hitbox.centerx = int(self.x)
+        test_hitbox.centery = int(next_y + 12)
+
+        if not self.collides_blocking(test_hitbox, walls, ice_blocks, waters):
+            self.y = next_y
+
+        self.update_rects()
+        self.clamp_position_to_world()
+        self.update_rects()
 
         self.animate(dt, moving)
-        self.update_rects()
         self.was_moving = moving
 
         if self.freeze_flash_timer > 0:
@@ -1316,7 +1253,7 @@ class Player:
 
             self.image = anim_list[self.anim_index]
 
-    def freeze_pulse(self, waters, enemies, projectiles, walls):
+    def freeze_pulse(self, waters, enemies, projectiles):
         self.freeze_flash_timer = 0.18
         anything_newly_frozen = False
 
@@ -1325,17 +1262,10 @@ class Player:
                 if water.freeze():
                     anything_newly_frozen = True
 
-        player_center = self.hitbox.center
-
         for enemy in enemies:
-            if not enemy.alive:
-                continue
-            if rect_center_distance(self.hitbox, enemy.rect) > FREEZE_RADIUS:
-                continue
-            if not has_clear_line_of_sight(player_center, enemy.rect.center, walls):
-                continue
-            if enemy.freeze(duration=ENEMY_FREEZE_HIT_DURATION, count_hit=True):
-                anything_newly_frozen = True
+            if enemy.alive and rect_center_distance(self.hitbox, enemy.rect) <= FREEZE_RADIUS:
+                if enemy.freeze(duration=ENEMY_FREEZE_HIT_DURATION, count_hit=True):
+                    anything_newly_frozen = True
 
         for projectile in projectiles:
             if not projectile.alive or projectile.frozen:
@@ -1489,7 +1419,7 @@ async def main():
 
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE and not game_won and not game_finished:
-                    player.freeze_pulse(waters, enemies, projectiles, walls)
+                    player.freeze_pulse(waters, enemies, projectiles)
 
                 elif event.key == pygame.K_r:
                     walls, waters, ice_blocks, enemies, coins, goal, level_key, player, camera, projectiles = load_level(current_level_index)
@@ -1581,23 +1511,9 @@ async def main():
 
         player.draw(screen, camera)
 
-        controls_text = font.render("Move: WASD / Arrows   Freeze / Attack: SPACE   Restart: R", True, (255, 255, 255))
-        screen.blit(controls_text, (16, 12))
-
-        info_text = font.render("Collect the green key, then reach the exit.", True, (230, 240, 255))
-        screen.blit(info_text, (16, 40))
-
-        level_text = font.render(f"Level: {current_level_index + 1}/{len(LEVELS)}", True, (180, 235, 255))
-        screen.blit(level_text, (16, 68))
-
-        coin_text = font.render(f"Coins: {coin_count}", True, (255, 240, 120))
-        screen.blit(coin_text, (16, 96))
-
-        total_coin_text = font.render(f"Total Coins: {total_coins}", True, (255, 230, 120))
-        screen.blit(total_coin_text, (16, 124))
-
-        key_text = font.render(f"Key: {'YES' if player.has_level_key else 'NO'}", True, (100, 255, 140))
-        screen.blit(key_text, (16, 152))
+        # ONLY keep the coins flag on screen
+        coin_text = font.render(f"Coins: {coin_count}", True, (0, 255, 255))
+        screen.blit(coin_text, (16, 12))
 
         if game_won:
             win_surf = big_font.render("LEVEL CLEAR", True, (230, 245, 255))
