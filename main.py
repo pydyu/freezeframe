@@ -10,7 +10,7 @@ import asyncio
 # -----------------------------
 SCREEN_WIDTH = 960
 SCREEN_HEIGHT = 540
-FPS = 1000
+FPS = 60
 
 # Logical/world tile size
 TILE_SIZE = 64
@@ -232,7 +232,7 @@ MAP_ROWS = len(LEVEL_MAP)
 MAP_PIXEL_WIDTH = MAP_COLS * TILE_SIZE + WORLD_PADDING * 2
 MAP_PIXEL_HEIGHT = MAP_ROWS * TILE_SIZE + WORLD_PADDING * 2
 
-PLAYER_SCALE = 0.8
+PLAYER_SCALE = 1
 PLAYER_SPEED = 180
 PLAYER_COLLISION_SKIN = 2
 
@@ -306,7 +306,7 @@ ENEMY_COLLISION_SIZE = (38, 38)
 # MUSIC / SFX
 # -----------------------------
 MUSIC_PATH = r"Sounds And Music/freeze-frame-ost.ogg"
-MUSIC_VOLUME = 0.15
+MUSIC_VOLUME = 0.5
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -319,9 +319,10 @@ FREEZE_SOUND_PATHS = [
 FREEZE_SOUND_VOLUME = 0.6
 freeze_sounds = []
 
+pygame.mixer.pre_init(48000, -16, 2, 2048)
 pygame.init()
 pygame.mixer.init()
-pygame.mixer.set_num_channels(32)  # lets freeze sounds overlap nicely
+pygame.mixer.set_num_channels(4) # lets freeze sounds overlap nicely
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Freeze Frame")
 clock = pygame.time.Clock()
@@ -336,7 +337,6 @@ big_font = pygame.font.Font(r"Assets/fonts/LowresPixel-Regular.otf", 56)
 def load_sprite(filename, scale=1):
     path = os.path.join(ASSET_DIR, filename)
     image = pygame.image.load(path).convert_alpha()
-    image.set_colorkey((0, 0, 0))
 
     if scale != 1:
         w, h = image.get_size()
@@ -416,7 +416,7 @@ def set_current_level(level_rows):
     MAP_PIXEL_WIDTH = MAP_COLS * TILE_SIZE + WORLD_PADDING * 2
     MAP_PIXEL_HEIGHT = MAP_ROWS * TILE_SIZE + WORLD_PADDING * 2
 
-    background = pygame.image.load(MAP_PATH).convert()
+    background = pygame.image.load(MAP_PATH).convert_alpha()
     background = pygame.transform.scale(background, (MAP_PIXEL_WIDTH, MAP_PIXEL_HEIGHT))
 
 
@@ -482,7 +482,7 @@ class Camera:
 # -----------------------------
 # LOAD FIRST BACKGROUND
 # -----------------------------
-background = pygame.image.load(MAP_PATH).convert()
+background = pygame.image.load(MAP_PATH).convert_alpha()
 background = pygame.transform.scale(background, (MAP_PIXEL_WIDTH, MAP_PIXEL_HEIGHT))
 
 # -----------------------------
@@ -1373,7 +1373,7 @@ def load_level(level_index):
 async def main():
     start_background_music()
 
-    current_level_index = 5
+    current_level_index = 0
     walls, waters, ice_blocks, enemies, coins, goal, level_key, player, camera, projectiles = load_level(current_level_index)
 
     game_won = False
@@ -1382,7 +1382,7 @@ async def main():
     total_coins = 0
 
     easter_egg_timer = 0.0
-    easter_egg_text = "+1 Coin, note from dyu, STOP CHEATING"
+    easter_egg_text = "+1 Coin, note from dyu, STOP CHEATING rh"
 
     running = True
     while running:
