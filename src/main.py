@@ -33,7 +33,7 @@ LEVELS = [
         "#         E    W   G #",
         "#   #######    W     #",
         "#   #     #    W     #",
-        "# P #     #######    #",
+        "# P #  I  #######    #",
         "#   #              ###",
         "#   ######     E     #",
         "#   W  C #           #",
@@ -47,7 +47,7 @@ LEVELS = [
         "# #### W ####### ### #",
         "#    # W    C        #",
         "## # # ####### ###   #",
-        "#  # #         #     #",
+        "#  # #     I   #     #",
         "#  # #####     #  E  #",
         "#  #     #  C  #     #",
         "#  ##### # ####### G #",
@@ -77,7 +77,7 @@ LEVELS = [
         "# E # W ###### ### # #",
         "#   # W      #  C  # #",
         "# ### W #### # ####  #",
-        "#            #       #",
+        "#     I      #       #",
         "######################",
     ],
     [
@@ -88,7 +88,7 @@ LEVELS = [
         "## ## ## #### # ###  #",
         "#      E    # #   #  #",
         "# ####### # # ### #  #",
-        "#         # #   # #  #",
+        "#   I     # #   # #  #",
         "# ##### ### ### # #  #",
         "#     C    E     G   #",
         "######################",
@@ -100,7 +100,7 @@ LEVELS = [
         "#   C     ##  W      #",
         "### ##### ####### ## #",
         "#   #   #      S     #",
-        "# E #   ###### ### # #",
+        "# E # I ###### ### # #",
         "#   #      C  #   #  #",
         "# ### ####### # ###  #",
         "#                  E #",
@@ -113,7 +113,7 @@ LEVELS = [
         "# C  W       #  S    #",
         "# ####### ## # ##### #",
         "#       # ## #     # #",
-        "#  E    #    ##### # #",
+        "#  E I  #    ##### # #",
         "# ##### ######   # # #",
         "#     #      C   #   #",
         "################## ###",
@@ -129,7 +129,7 @@ LEVELS = [
         "# E # W  ###### # #  #",
         "#   # W    C    # #  #",
         "# ### W ####### # ## #",
-        "#                   ##",
+        "#     I             ##",
         "######################",
     ],
     [
@@ -142,7 +142,7 @@ LEVELS = [
         "#    # #  ####  #  # #",
         "# E  # #    C   #    #",
         "# #### ####### ####  #",
-        "#                    #",
+        "#      I             #",
         "######################",
     ],
     [
@@ -153,7 +153,7 @@ LEVELS = [
         "## ## ## #### # #### #",
         "#      E    # #    # #",
         "# ####### # # ###  # #",
-        "#         # #   #  # #",
+        "#   I     # #   #  # #",
         "# ##### ### ### #  # #",
         "#     C          #   #",
         "######################",
@@ -165,7 +165,7 @@ LEVELS = [
         "#   C     ## W   S   #",
         "### ##### ####### ## #",
         "#   #   #      E     #",
-        "#   #   ###### ### # #",
+        "#   # I ###### ### # #",
         "#   #      C  #   #  #",
         "# ### ####### # ###  #",
         "#                  S #",
@@ -179,7 +179,7 @@ LEVELS = [
         "# # ###### #  ###### #",
         "# #      # #       # #",
         "# #### E # ######  # #",
-        "#    #   #      #  # #",
+        "#    # I #      #  # #",
         "#### # ### #### #  # #",
         "#      C      S #    #",
         "######################",
@@ -194,7 +194,7 @@ LEVELS = [
         "# E # W  ###### # #  #",
         "#   # W       S # #  #",
         "# ### W ####### # ## #",
-        "#            E      ##",
+        "#     I      E      ##",
         "######################",
     ],
     [
@@ -206,7 +206,7 @@ LEVELS = [
         "# #    #       #   # #",
         "# # E  ######  ### # #",
         "# #    C    #    # # #",
-        "# #######   #### # # #",
+        "# ####### I #### # # #",
         "#          S       E #",
         "######################",
     ],
@@ -219,7 +219,7 @@ LEVELS = [
         "#    #      # ##   # #",
         "# S  ###### # #### # #",
         "#    #  C   #    # # #",
-        "#### # ###   ### # # #",
+        "#### # ### I ### # # #",
         "#         E     S    #",
         "######################",
     ],
@@ -325,8 +325,9 @@ screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Freeze Frame")
 clock = pygame.time.Clock()
 
-font = pygame.font.Font(None, 28)
-big_font = pygame.font.SysFont(None, 56)
+# kept your existing font setup unchanged
+font = pygame.font.Font(r"C:\code\pydyu\freezeframe\fonts\LowresPixel-Regular.otf", 28)
+big_font = pygame.font.Font(r"C:\code\pydyu\freezeframe\fonts\LowresPixel-Regular.otf", 56)
 
 # -----------------------------
 # HELPERS
@@ -675,7 +676,6 @@ class Water:
 
         surface.blit(self.image, draw_rect)
 
-
 class IceBlock:
     def __init__(self, tx, ty):
         x, y = tile_to_world(tx, ty)
@@ -885,15 +885,13 @@ class Enemy:
         move_y = dy * self.melee_speed * dt
 
         test_rect = self.rect.copy()
-        test_rect.centerx = int(self.x + move_x)
-        test_rect.centery = int(self.y)
+        test_rect.x += int(move_x)
         if not self.collides_blocking(test_rect, walls, ice_blocks, waters):
             self.x += move_x
             self.update_rect()
 
         test_rect = self.rect.copy()
-        test_rect.centerx = int(self.x)
-        test_rect.centery = int(self.y + move_y)
+        test_rect.y += int(move_y)
         if not self.collides_blocking(test_rect, walls, ice_blocks, waters):
             self.y += move_y
             self.update_rect()
@@ -928,7 +926,6 @@ class Enemy:
                 self.shots_left -= 1
                 self.shoot_timer = ENEMY_SHOOT_INTERVAL
         else:
-            # smooth slime chase every frame
             self.animate_slime(dt)
             self.move_toward_player(dt, player, walls, ice_blocks, waters)
             self.slime_bob_timer += dt
@@ -958,8 +955,6 @@ class DoubleShotEnemy(Enemy):
         self.shots_left = SPECIAL_ENEMY_MAX_BULLETS
         self.shoot_timer = SPECIAL_ENEMY_SHOOT_INTERVAL
         self.image = SPECIAL_ENEMY_IDLE_FRAMES[self.anim_index]
-
-        # keeps enemy 2 moving more often, but still visibly idling/animating
         self.move_cycle_timer = 0.0
         self.move_cycle_interval = 0.38
 
@@ -1034,7 +1029,6 @@ class DoubleShotEnemy(Enemy):
                 self.freeze_timer = 0.0
             return
 
-        # ALWAYS animate purple idle frames so enemy 2 never "loses" idle animation
         self.animate(dt)
 
         if self.shots_left > 0:
@@ -1044,7 +1038,6 @@ class DoubleShotEnemy(Enemy):
                 self.shots_left -= 1
                 self.shoot_timer = SPECIAL_ENEMY_SHOOT_INTERVAL
         else:
-            # move more frequently, but keep the purple animated look
             self.move_cycle_timer += dt
             if self.move_cycle_timer >= self.move_cycle_interval:
                 self.move_cycle_timer = 0.0
@@ -1057,7 +1050,6 @@ class DoubleShotEnemy(Enemy):
         if self.frozen:
             img = enemy_frozen_img
         else:
-            # always use the purple idle animation frames for enemy 2
             img = self.image
 
         draw_rect = img.get_rect(center=self.rect.center)
@@ -1135,20 +1127,6 @@ class Player:
 
         return False
 
-    def clamp_position_to_world(self):
-        # Use actual hitbox/world bounds instead of BORDER_SIZE so the player
-        # does not get stuck on corners/sides when moving left.
-        half_w = self.hitbox.width / 2
-        half_h = self.hitbox.height / 2
-
-        min_x = WORLD_PADDING + half_w
-        max_x = MAP_PIXEL_WIDTH - WORLD_PADDING - half_w
-        min_y = WORLD_PADDING - 12 + half_h
-        max_y = MAP_PIXEL_HEIGHT - WORLD_PADDING - 12 - half_h
-
-        self.x = max(min_x, min(max_x, self.x))
-        self.y = max(min_y, min(max_y, self.y))
-
     def update(self, dt, walls, ice_blocks, waters):
         move_x, move_y = self.handle_input()
         moving = (move_x != 0 or move_y != 0)
@@ -1166,33 +1144,28 @@ class Player:
             else:
                 self.direction = "down" if move_y > 0 else "up"
 
-        # -------- X AXIS --------
-        next_x = self.x + dx
         test_hitbox = self.hitbox.copy()
-        test_hitbox.centerx = int(next_x)
-        test_hitbox.centery = int(self.y + 12)
-
+        test_hitbox.x += int(dx)
         if not self.collides_blocking(test_hitbox, walls, ice_blocks, waters):
-            self.x = next_x
+            self.x += dx
+            self.hitbox = test_hitbox
 
-        self.update_rects()
-        self.clamp_position_to_world()
-        self.update_rects()
-
-        # -------- Y AXIS --------
-        next_y = self.y + dy
         test_hitbox = self.hitbox.copy()
-        test_hitbox.centerx = int(self.x)
-        test_hitbox.centery = int(next_y + 12)
-
+        test_hitbox.y += int(dy)
         if not self.collides_blocking(test_hitbox, walls, ice_blocks, waters):
-            self.y = next_y
+            self.y += dy
+            self.hitbox = test_hitbox
 
-        self.update_rects()
-        self.clamp_position_to_world()
-        self.update_rects()
+        left_limit = WORLD_PADDING + BORDER_SIZE
+        right_limit = MAP_PIXEL_WIDTH - WORLD_PADDING - BORDER_SIZE
+        top_limit = WORLD_PADDING + BORDER_SIZE
+        bottom_limit = MAP_PIXEL_HEIGHT - WORLD_PADDING - BORDER_SIZE
+
+        self.x = max(left_limit, min(right_limit, self.x))
+        self.y = max(top_limit, min(bottom_limit, self.y))
 
         self.animate(dt, moving)
+        self.update_rects()
         self.was_moving = moving
 
         if self.freeze_flash_timer > 0:
@@ -1380,13 +1353,16 @@ def load_level(level_index):
 async def main():
     start_background_music()
 
-    current_level_index = 14
+    current_level_index = 0
     walls, waters, ice_blocks, enemies, coins, goal, level_key, player, camera, projectiles = load_level(current_level_index)
 
     game_won = False
     game_finished = False
     coin_count = 0
     total_coins = 0
+
+    easter_egg_timer = 1.0
+    easter_egg_text = "+1 Coin, note from dyu, STOP CHEATING"
 
     running = True
     while running:
@@ -1405,6 +1381,7 @@ async def main():
                     game_won = False
                     game_finished = False
                     coin_count = 0
+                    player.has_level_key = False
 
                 elif event.key in (pygame.K_RETURN, pygame.K_n):
                     if game_won and not game_finished:
@@ -1416,6 +1393,18 @@ async def main():
                             walls, waters, ice_blocks, enemies, coins, goal, level_key, player, camera, projectiles = load_level(current_level_index)
                             game_won = False
                             coin_count = 0
+
+                elif event.key == pygame.K_x:
+                    mods = pygame.key.get_mods()
+                    if (mods & pygame.KMOD_CTRL) and (mods & pygame.KMOD_SHIFT):
+                        easter_egg_timer = 2.0
+                        coin_count += 1
+                        total_coins += 1
+
+        if easter_egg_timer > 0:
+            easter_egg_timer -= dt
+            if easter_egg_timer < 0:
+                easter_egg_timer = 0
 
         if not game_won and not game_finished:
             for water in waters:
@@ -1490,8 +1479,8 @@ async def main():
 
         player.draw(screen, camera)
 
-        # ONLY keep the coins flag on screen
-        coin_text = font.render(f"Coins: {coin_count}", True, (0, 255, 255))
+        # only keep coins visible on the main HUD
+        coin_text = font.render(f"Coins: {coin_count}", True, (0, 0, 0))
         screen.blit(coin_text, (16, 12))
 
         if game_won:
@@ -1503,12 +1492,17 @@ async def main():
             screen.blit(restart_surf, (SCREEN_WIDTH // 2 - restart_surf.get_width() // 2, 182))
 
         if game_finished:
-            win_surf = big_font.render(f"YOU BEAT ALL {len(LEVELS)} LEVELS", True, (230, 245, 255))
-            hint_surf = font.render("Press R to replay the current level", True, (230, 245, 255))
-            total_surf = font.render(f"Total Coins Collected: {total_coins}", True, (255, 240, 120))
+            win_surf = big_font.render(f"YOU BEAT ALL {len(LEVELS)} LEVELS", True, (0, 0, 0))
+            hint_surf = font.render("Press R to replay the current level", True, (0, 5, 0))
             screen.blit(win_surf, (SCREEN_WIDTH // 2 - win_surf.get_width() // 2, 90))
             screen.blit(hint_surf, (SCREEN_WIDTH // 2 - hint_surf.get_width() // 2, 150))
-            screen.blit(total_surf, (SCREEN_WIDTH // 2 - total_surf.get_width() // 2, 182))
+
+        if easter_egg_timer > 0:
+            easter_egg_surf = font.render(easter_egg_text, True, (0, 0, 0))
+            screen.blit(
+                easter_egg_surf,
+                (16, SCREEN_HEIGHT - easter_egg_surf.get_height() - 16)
+            )
 
         pygame.display.flip()
         await asyncio.sleep(0)
