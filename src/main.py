@@ -542,7 +542,8 @@ special_enemy_frame_1 = load_image(SPECIAL_ENEMY_FRAME_1_PATH, ENEMY_DRAW_SIZE)
 special_enemy_frame_2 = load_image(SPECIAL_ENEMY_FRAME_2_PATH, ENEMY_DRAW_SIZE)
 SPECIAL_ENEMY_IDLE_FRAMES = [special_enemy_frame_1, special_enemy_frame_2]
 
-enemy_frozen_img = make_placeholder_surface(ENEMY_DRAW_SIZE, (170, 235, 255), (120, 180, 210))
+enemy_frozen_img = pygame.image.load(r"C:\code\pydyu\freezeframe\Assets\Enemies\01_pixilart-sprite (14).png").convert_alpha()
+enemy_frozen_img_2 = pygame.image.load(r"C:\code\pydyu\freezeframe\Assets\Enemies\pixil-frame-0.png").convert_alpha()
 special_enemy_melee_img = make_placeholder_surface(ENEMY_DRAW_SIZE, (120, 80, 230), (70, 40, 140))
 
 SLIME_FRAMES = [
@@ -1048,7 +1049,7 @@ class DoubleShotEnemy(Enemy):
             return
 
         if self.frozen:
-            img = enemy_frozen_img
+            img = enemy_frozen_img_2
         else:
             img = self.image
 
@@ -1361,7 +1362,7 @@ async def main():
     coin_count = 0
     total_coins = 0
 
-    easter_egg_timer = 1.0
+    easter_egg_timer = 0.0
     easter_egg_text = "+1 Coin, note from dyu, STOP CHEATING"
 
     running = True
